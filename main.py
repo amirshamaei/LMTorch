@@ -75,7 +75,7 @@ class LMtorch():
                 lambda_= (torch.min(lambda_ * multiplier,max_lambda))
                 multiplier *= 2
 
-            x_list.append(x.clone())
+            # x_list.append(x.clone())
             f_val = f(x, y).reshape(-1, 1)
             if i == max_iter - 1:
                 print("Warning: Maximum number of iterations reached.")

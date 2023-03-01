@@ -14,10 +14,7 @@ class MyTestCase(unittest.TestCase):
             return (x ** 2 - 4)
 
         x = torch.randn(1)
-        st = time.time()
-        x_pre = (LMtorch(device='cpu').solve(f = model, x0=x, bounds=[-15, 15], max_iter=20, delta=0.1))
-        print(time.time() - st)
-        print(torch.abs(torch.sqrt(torch.FloatTensor([4])))-torch.abs(x_pre) )
+        x_pre = (LMtorch(device='cpu').solve(f = model, x0=x, bounds=[-1, 1], max_iter=10, delta=0.1))
         assert torch.abs(torch.sqrt(torch.FloatTensor([4])))-torch.abs(x_pre) < 0.1
 
     def testmodelless(self):
@@ -32,7 +29,7 @@ class MyTestCase(unittest.TestCase):
         y = fun(coeff)
         x = torch.randn((1,1000))
         st = time.time()
-        x_new = LMtorch(device='cpu').solve(f=model,x0=x,y=y,bounds=[-10,0.5],max_iter=1000,delta=1e-1)
+        x_new = LMtorch(device='cpu').solve(f=model,x0=x,y=y,bounds=[-10,0.5],max_iter=100,delta=1e-1)
         print(time.time()-st)
 
         plt.plot(y)

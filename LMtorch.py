@@ -8,7 +8,7 @@ class LMtorch():
     def __init__(self,device='cpu'):
         self.device = device
 
-    def solve(self,f=None, x0=None, y=torch.FloatTensor([0]), bounds=None, max_iter=100, tol=1e-6, lambda0=1e-3, delta=1e-6):
+    def solve(self,f=None, x0=None, y=torch.FloatTensor([0]), bounds=None, max_iter=100, tol=1e-6, lambda0=1e-3, delta=1):
         """
         Minimize a function `f` using the modified Levenberg-Marquardt algorithm.
 
@@ -36,39 +36,40 @@ class LMtorch():
             The estimated minimum.
         """
 
-        x = x0.clone().detach().requires_grad_(True).to(self.device)
+        x = x0.clone().requires_grad_(False).to(self.device)
+        y = y.clone().requires_grad_(False).to(self.device)
 
         J = torch.autograd.functional.jacobian
 
         # initialization
-        f_val = f(x, y).reshape(-1, 1)
-        J_val = J(f, (x,y))[0]
-        JtJ = torch.matmul(J_val.T, J_val)
-        Jtf = torch.matmul(J_val.T, f_val)
-        lambda_ = lambda0 * torch.max(torch.diag(Jtf))
-        multiplier = 1.5
+        f_val = f(x, y).reshape(-1, 1).repeat((x.shape[0],1,1))
+        J_val = J(f, (x,y))[0].unsqueeze(1)
+        JtJ = torch.matmul(J_val.permute(0,2,1), J_val)
+        Jtf = torch.matmul(J_val.permute(0,2,1), f_val)
+        multiplier = 2
         x_list = []
-        max_lambda = torch.FloatTensor([1e10])
+        max_lambda = torch.FloatTensor([1e7]).to(self.device)
+        min_lambda = torch.FloatTensor([1e-7]).to(self.device)
+        eye_ = torch.eye(JtJ.shape[1]).to(self.device)
+        lambda_ = lambda0
+                  # * torch.max((JtJ*eye_))
 
         for i in range(max_iter):
-            # diag_JtJ = torch.diag(JtJ)
-            # torch.diag(diag_JtJ)
-            h = (JtJ + lambda_ * torch.eye(JtJ.shape[0])).inverse().matmul(Jtf)
-            dparam = -(delta * h)
-            x_new = torch.clamp(x + dparam.T, bounds[0], bounds[1])
-            # x_new = x + dparam.T
+            # eye_J = eye_ * JtJ
+            h = (JtJ + lambda_ * eye_).inverse().matmul(Jtf)
+            dparam = -(delta * h.squeeze())
+            x_new = torch.min(torch.max(x + dparam, bounds[0]),bounds[1])
             f_new_val = f(x_new,y).reshape(-1, 1)
-            rho_denom = torch.matmul(h.T, lambda_ * h - Jtf)
-            rho_nom = torch.matmul(f_val, f_val.T) - torch.matmul(f_new_val, f_new_val.T)
-            rho = rho_nom / rho_denom if rho_denom > 0 else 10e15 if rho_nom > 0 else -10e15
-            # rho = (torch.norm(f_val) - torch.norm(f_new_val) ) / torch.matmul(h.T, lambda_ * h - Jtf)
 
-            if rho > 0:
+            rho = (torch.norm(f_val) - torch.norm(f_new_val) ) / torch.matmul(h.permute(0,2,1), lambda_ * h - Jtf).norm()
+
+            if rho > 0.0001:
                 x = x_new
-                J_val = J(f, (x,y))[0]
-                JtJ = torch.matmul(J_val.T, J_val)
-                Jtf = torch.matmul(J_val.T, f_val)
-                lambda_, v = (lambda_ * torch.max(torch.tensor([1 / 3, 1 - (2 * rho - 1) ** 3])), 2)
+                J_val = J(f, (x,y))[0].unsqueeze(1)
+                JtJ = torch.matmul(J_val.permute(0, 2, 1), J_val)
+                Jtf = torch.matmul(J_val.permute(0, 2, 1), f_val)
+                lambda_= lambda_ * torch.max(torch.tensor([1 / 3, 1 - (2 * rho - 1) ** 3]))
+                multiplier = 2
                 if torch.norm(f_val - f_new_val) < tol:
                     break
             else:
@@ -76,10 +77,10 @@ class LMtorch():
                 multiplier *= 2
 
             # x_list.append(x.clone())
-            f_val = f(x, y).reshape(-1, 1)
+            f_val = f(x, y).reshape(-1, 1).repeat((x.shape[0],1,1))
             if i == max_iter - 1:
                 print("Warning: Maximum number of iterations reached.")
 
-        return x.detach()
+        return x.detach().cpu()
 
 

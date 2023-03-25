@@ -48,8 +48,10 @@ class LMtorch():
         Jtf = torch.matmul(J_val.permute(0,2,1), f_val)
         multiplier = 2
         x_list = []
-        max_lambda = torch.FloatTensor([1e7]).to(self.device)
-        min_lambda = torch.FloatTensor([1e-7]).to(self.device)
+        min_bound = bounds[0].to(self.device)
+        max_bound = bounds[1].to(self.device)
+        max_lambda = torch.FloatTensor([1e5]).to(self.device)
+        min_lambda = torch.FloatTensor([1e-5]).to(self.device)
         eye_ = torch.eye(JtJ.shape[1]).to(self.device)
         lambda_ = lambda0
                   # * torch.max((JtJ*eye_))
@@ -58,7 +60,7 @@ class LMtorch():
             # eye_J = eye_ * JtJ
             h = (JtJ + lambda_ * eye_).inverse().matmul(Jtf)
             dparam = -(delta * h.squeeze())
-            x_new = torch.min(torch.max(x + dparam, bounds[0]),bounds[1])
+            x_new = torch.min(torch.max(x + dparam, min_bound),max_bound)
             f_new_val = f(x_new,y).reshape(-1, 1)
 
             rho = (torch.norm(f_val) - torch.norm(f_new_val) ) / torch.matmul(h.permute(0,2,1), lambda_ * h - Jtf).norm()

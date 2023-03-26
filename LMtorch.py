@@ -1,5 +1,6 @@
 # A comment.
 #
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
@@ -8,7 +9,7 @@ class LMtorch():
     def __init__(self,device='cpu'):
         self.device = device
 
-    def solve(self,f=None, x0=None, y=torch.FloatTensor([0]), bounds=None, max_iter=100, tol=1e-6, lambda0=1e-3, delta=1):
+    def solve(self,f=None, x0=None, y=torch.FloatTensor([0]), bounds=[-1*torch.inf,torch.inf], max_iter=100, tol=1e-6, lambda0=1e-3, delta=1, scale_lambda=False):
         """
         Minimize a function `f` using the modified Levenberg-Marquardt algorithm.
 
@@ -53,12 +54,17 @@ class LMtorch():
         max_lambda = torch.FloatTensor([1e5]).to(self.device)
         min_lambda = torch.FloatTensor([1e-5]).to(self.device)
         eye_ = torch.eye(JtJ.shape[1]).to(self.device)
-        lambda_ = lambda0
-                  # * torch.max((JtJ*eye_))
+        if scale_lambda:
+            lambda_ = lambda0 * torch.max((JtJ*eye_))
+        else:
+            lambda_ = lambda0
 
         for i in range(max_iter):
-            # eye_J = eye_ * JtJ
-            h = (JtJ + lambda_ * eye_).inverse().matmul(Jtf)
+            if scale_lambda:
+                eye_J = eye_ * JtJ
+            else:
+                eye_J = eye_
+            h = (JtJ + lambda_ * eye_J).inverse().matmul(Jtf)
             dparam = -(delta * h.squeeze())
             x_new = torch.min(torch.max(x + dparam, min_bound),max_bound)
             f_new_val = f(x_new,y).reshape(-1, 1)

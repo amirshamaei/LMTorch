@@ -9,12 +9,24 @@ from LMtorch import LMtorch
 
 
 class MyTestCase(unittest.TestCase):
+    def test_lm_withoutBounds(self):
+        def model(x, y=None):
+            return ((x - 4) ** 2)
+
+        x = torch.randn(1)
+        x_pre = (LMtorch(device='cpu').solve(f=model, x0=x,
+                                             max_iter=200, delta=1))
+
+        print(x_pre.cpu().numpy())
+        assert torch.abs(torch.sqrt(torch.FloatTensor([4]))) - torch.abs(x_pre.cpu()) < 0.1
+
     def test_lm(self):
         def model(x, y=None):
             return ((x - 4) ** 2)
 
         x = torch.randn(1)
         x_pre = (LMtorch(device='cpu').solve(f=model, x0=x, bounds=[torch.FloatTensor([-10]), torch.FloatTensor([6])], max_iter=200, delta=1))
+
         print(x_pre.cpu().numpy())
         assert torch.abs(torch.sqrt(torch.FloatTensor([4]))) - torch.abs(x_pre.cpu()) < 0.1
 

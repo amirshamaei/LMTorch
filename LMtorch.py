@@ -9,7 +9,7 @@ class LMtorch():
     def __init__(self,device='cpu'):
         self.device = device
 
-    def solve(self,f=None, x0=None, y=torch.FloatTensor([0]), bounds=[-1*torch.inf,torch.inf], max_iter=100, tol=1e-6, lambda0=1e-3, delta=1, scale_lambda=False):
+    def solve(self,f=None, x0=None, y=torch.FloatTensor([0]), bounds=[torch.FloatTensor([-1*torch.inf]),torch.FloatTensor([torch.inf])], max_iter=100, tol=1e-6, lambda0=1e-3, delta=1, scale_lambda=False):
         """
         Minimize a function `f` using the modified Levenberg-Marquardt algorithm.
 
@@ -30,7 +30,8 @@ class LMtorch():
             The initial value of the damping parameter. Default is 1.0.
         delta : float, optional
             The step size used to compute the approximate Hessian. Default is 1e-6.
-
+        scale_lambda: boolean, optional
+            if true, makes lambda scaled according to JtJ matrix
         Returns
         -------
         x_min : torch.Tensor

@@ -1,11 +1,10 @@
 import unittest
 import time
 
-import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-from LMtorch import LMtorch
+from src.LMtorch import LMtorch
 
 
 class MyTestCase(unittest.TestCase):

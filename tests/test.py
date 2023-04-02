@@ -3,16 +3,28 @@ import time
 
 import torch
 from matplotlib import pyplot as plt
-
-from src.LMtorch import LMtorch
+from src.LMtorch.LMtorch import LMtorch
 
 
 class MyTestCase(unittest.TestCase):
+    def test_lm_rosenbrock(self):
+        a = 1
+        def rosenbrock(x,y=None):
+            return torch.pow(a - x[0,0], 2) + 100 * torch.pow(x[0,1] - x[0,0] ** 2, 2)
+        x = torch.randn((1,2))
+        x[0,0] = -2
+        x[0,1] = 2
+        x_pre = (LMtorch(device='cpu').solve(f=rosenbrock, x0=x,
+                                             max_iter=5000, tol=1e-10,scale_lambda=True))
+
+        print(x_pre.cpu().numpy())
+        # assert torch.abs(torch.sqrt(torch.FloatTensor([1,1]))) - torch.abs(x_pre.cpu()) < 0.1
+
     def test_lm_withoutBounds(self):
         def model(x, y=None):
-            return ((x - 4) ** 2)
+            return ((x[0,0] - 4) ** 2)
 
-        x = torch.randn(1)
+        x = torch.randn((1,1))
         x_pre = (LMtorch(device='cpu').solve(f=model, x0=x,
                                              max_iter=200, delta=1))
 
@@ -21,9 +33,9 @@ class MyTestCase(unittest.TestCase):
 
     def test_lm(self):
         def model(x, y=None):
-            return ((x - 4) ** 2)
+            return ((x[0,0] - 4) ** 2)
 
-        x = torch.randn(1)
+        x = torch.randn((1,1))
         x_pre = (LMtorch(device='cpu').solve(f=model, x0=x, bounds=[torch.FloatTensor([-10]), torch.FloatTensor([6])], max_iter=200, delta=1))
 
         print(x_pre.cpu().numpy())
@@ -42,10 +54,10 @@ class MyTestCase(unittest.TestCase):
         x = torch.randn((1, 1000))
         st = time.time()
         x_new = LMtorch(device='cpu').solve(f=model, x0=x, y=y, bounds=[torch.FloatTensor([-10]), torch.FloatTensor([0.5])], max_iter=1000, delta=1)
-        print("predicted value is: {}".format(x_new.cpu().numpy()))
+        print("spend time is (cpu): {}".format(time.time()-st))
 
         plt.plot(y)
-        plt.plot(x_new.numpy().T)
+        plt.plot(x_new[0].numpy().T)
         plt.show()
         assert torch.norm(x_new - y) < 10
 
@@ -59,7 +71,7 @@ class MyTestCase(unittest.TestCase):
 
         coeff = 0.01
         y = fun(coeff)
-        x = torch.randn((1, 1000))
+        x = torch.randn(( 1, 1000))
         st = time.time()
         min_ = torch.arange(start=0,step=-1/1000,end=-1)
         max_ = torch.arange(start=0,step=1/1000,end=1)
@@ -67,9 +79,10 @@ class MyTestCase(unittest.TestCase):
         print("spend time is (cpu): {}".format(time.time()-st))
 
         plt.plot(y)
-        plt.plot(x_new.numpy().T)
+        plt.plot(x_new[0].numpy().T)
         plt.show()
         assert torch.norm(x_new - y) < 10
+
     def testmodelless_batch(self):
         def fun(coeff):
             t = torch.linspace(0, 100, 1000)
@@ -95,9 +108,9 @@ class MyTestCase(unittest.TestCase):
 
     def test_lm_cuda(self):
         def model(x, y=None):
-            return ((x - 4) ** 2)
+            return ((x[0,0] - 4) ** 2)
 
-        x = torch.randn(1)
+        x = torch.randn((1,1))
         x_pre = (LMtorch(device='cuda').solve(f=model, x0=x, bounds=[torch.FloatTensor([-10]), torch.FloatTensor([5])], max_iter=100, delta=1))
         print("predicted value is: {}".format(x_pre.cpu().numpy()))
         assert torch.abs(torch.sqrt(torch.FloatTensor([4]))) - torch.abs(x_pre.cpu()) < 0.1

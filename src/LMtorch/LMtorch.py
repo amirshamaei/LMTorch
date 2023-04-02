@@ -56,21 +56,23 @@ class LMtorch():
         min_lambda = torch.FloatTensor([1e-5]).to(self.device)
         eye_ = torch.eye(JtJ.shape[1]).to(self.device)
         if scale_lambda:
-            lambda_ = lambda0 * torch.max((JtJ*eye_))
+            lambda_ = torch.FloatTensor([lambda0]) * torch.max((JtJ*eye_)).to(self.device)
         else:
-            lambda_ = lambda0
+            lambda_ = torch.FloatTensor([lambda0]).to(self.device)
 
         for i in range(max_iter):
             if scale_lambda:
-                eye_J = eye_ * JtJ
+                eye_J = eye_ * torch.max((JtJ*eye_))
             else:
                 eye_J = eye_
-            h = (JtJ + lambda_ * eye_J).inverse().matmul(Jtf)
-            dparam = -(delta * h.squeeze())
-            x_new = torch.min(torch.max(x + dparam, min_bound),max_bound)
+            h = -1*torch.linalg.lstsq(JtJ + lambda_ * eye_J,Jtf)[0]
+            # h = (JtJ + lambda_ * eye_J).inverse().matmul(Jtf)
+            dparam = (delta * h)
+            x_new = torch.min(torch.max(x + dparam.squeeze(), min_bound),max_bound)
             f_new_val = f(x_new,y).reshape(-1, 1)
-
-            rho = (torch.norm(f_val) - torch.norm(f_new_val) ) / torch.matmul(h.permute(0,2,1), lambda_ * h - Jtf).norm()
+            rho = (torch.norm(f_val) - torch.norm(f_new_val.repeat((x.shape[0],1,1))) ) / torch.matmul(h.permute(0,2,1), lambda_ * h - Jtf).mean() \
+                if torch.matmul(dparam.permute(0,2,1), lambda_ * dparam - Jtf).mean() > 0 else torch.inf \
+                if (torch.norm(f_val) - torch.norm(f_new_val.repeat((x.shape[0],1,1))) )  > 0 else -torch.inf
 
             if rho > 0.0001:
                 x = x_new
@@ -80,6 +82,7 @@ class LMtorch():
                 lambda_= lambda_ * torch.max(torch.tensor([1 / 3, 1 - (2 * rho - 1) ** 3]))
                 multiplier = 2
                 if torch.norm(f_val - f_new_val) < tol:
+                    print("tol is satisfied")
                     break
             else:
                 lambda_= (torch.min(lambda_ * multiplier,max_lambda))
